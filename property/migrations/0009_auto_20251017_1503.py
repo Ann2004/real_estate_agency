@@ -2,14 +2,25 @@
 
 from django.db import migrations
 import phonenumbers
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 def parse_phonenumbers(property, schema_editor):
     Flat = property.get_model('property', 'Flat')
-    for flat in Flat.objects.all():
-        parsed_number = phonenumbers.parse(flat.owners_phonenumber, 'RU')
-        if phonenumbers.is_valid_number(parsed_number):
-            flat.owner_pure_phone = parsed_number
-            flat.save()
+    for flat in Flat.objects.all().iterator():
+        try:
+            parsed_number = phonenumbers.parse(flat.owners_phonenumber, 'RU')
+            if phonenumbers.is_valid_number(parsed_number):
+                flat.owner_pure_phone = parsed_number
+                flat.save()
+        except phonenumbers.NumberParseException as e:
+            logger.warning(
+                'Не удалось распарсить номер %s: %s',
+                flat.owners_phonenumber,
+                e
+            )
         
 
 class Migration(migrations.Migration):
